@@ -1,0 +1,16 @@
+{
+  "_id": "VEN001",
+  "sucursal_id": "SUC2",
+  "cliente_id": "CLT002",
+  "fecha": { "$date": { "$numberLong": "1756789200000" } },
+  "items": [
+    {
+      "producto_id": "PRD002",
+      "cantidad": { "$numberInt": "2" },
+      "precio_unitario": { "$numberInt": "8030" }
+    }
+  ],
+  "total": { "$numberInt": "33559" },
+  "metodo_pago": "Tarjeta",
+  "estado": "Finalizada"
+}
