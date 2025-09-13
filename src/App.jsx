@@ -6,6 +6,7 @@ import { Sucursales } from './pages/sucursales'
 import { Ventas } from './pages/ventas'
 import { AnimatePresence } from 'framer-motion'
 import Header from './components/header'
+import SalesDashboard from './pages/sales-dashboard'
 
 function AnimatedRoutes() {
   return (
@@ -15,6 +16,7 @@ function AnimatedRoutes() {
         <Route path='/clientes' element={<Clientes />} />
         <Route path='/inventario' element={<Inventario />} />
         <Route path='/sucursales' element={<Sucursales />} />
+        <Route path='/ventas' element={<SalesDashboard />} />
       </Routes>
     </AnimatePresence>
   )

@@ -24,11 +24,11 @@ const Header = () => {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="h-8 w-8 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold">
-                D
+                M
               </div>
             </div>
             <div className="ml-3 text-xl font-semibold text-gray-900">
-              Dashboard Retail
+              MegaMart
             </div>
           </div>
 
