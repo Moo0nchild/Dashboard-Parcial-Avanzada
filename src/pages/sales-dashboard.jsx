@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 
 const SalesDashboard = () => {
   const [currentStep, setCurrentStep] = useState(1)
@@ -16,92 +16,36 @@ const SalesDashboard = () => {
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [clientes, setClientes] = useState([])
-  const [sucursales, setSucursales] = useState([])
-  const [dataLoaded, setDataLoaded] = useState(false)
-
-  // Función mejorada para hacer fetch con manejo de errores
-  const fetchData = async (url, options = {}) => {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        ...options,
-      })
-
-      // Verificar si la respuesta es JSON
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        throw new Error(
-          `Respuesta no JSON recibida: ${text.substring(0, 100)}...`
-        )
-      }
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error('Error en fetch:', error)
-      throw error
-    }
-  }
-
-  // Cargar clientes y sucursales al montar el componente
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setLoading(true)
-
-        // Cargar clientes
-        const clientesData = await fetchData('/api/clientes')
-        setClientes(clientesData)
-
-        // Cargar sucursales
-        const sucursalesData = await fetchData('/api/sedes')
-        setSucursales(sucursalesData)
-
-        setDataLoaded(true)
-        setMessage('Datos cargados correctamente')
-      } catch (error) {
-        console.error('Error loading data:', error)
-        setMessage('Error al cargar datos: ' + error.message)
-        setClientes([])
-        setSucursales([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadInitialData()
-  }, [])
 
   // Función para iniciar transacción
   const iniciarTransaccion = async (customerId, branchId) => {
     setLoading(true)
-    setMessage('')
     try {
-      const data = await fetchData('/api/ventas/iniciar-transacción', {
+      const response = await fetch('/api/ventas/iniciar-transacción', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           customer_id: customerId,
           branch_id: branchId,
         }),
       })
 
-      setTransactionData({
-        ...transactionData,
-        transaction_id: data.transaction_id,
-        customer_id: customerId,
-        branch_id: branchId,
-        created_at: data.created_at,
-      })
-      setCurrentStep(2)
-      setMessage('Transacción iniciada con éxito')
+      if (response.ok) {
+        const data = await response.json()
+        setTransactionData({
+          ...transactionData,
+          transaction_id: data.transaction_id,
+          customer_id: customerId,
+          branch_id: branchId,
+          created_at: data.created_at,
+        })
+        setCurrentStep(2)
+        setMessage('Transacción iniciada con éxito')
+      } else {
+        throw new Error('Error al iniciar transacción')
+      }
     } catch (error) {
       setMessage('Error: ' + error.message)
     } finally {
@@ -112,10 +56,12 @@ const SalesDashboard = () => {
   // Función para agregar producto
   const agregarProducto = async (productId, quantity) => {
     setLoading(true)
-    setMessage('')
     try {
-      const data = await fetchData('/api/ventas/agregar-producto', {
+      const response = await fetch('/api/ventas/agregar-producto', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           transaction_id: transactionData.transaction_id,
           product_id: productId,
@@ -123,8 +69,13 @@ const SalesDashboard = () => {
         }),
       })
 
-      setMessage('Producto agregado: ' + data)
-      // Aquí deberías actualizar el estado con los nuevos items
+      if (response.ok) {
+        const data = await response.text()
+        setMessage('Producto agregado: ' + data)
+        // Aquí deberías actualizar el estado con los nuevos items
+      } else {
+        throw new Error('Error al agregar producto')
+      }
     } catch (error) {
       setMessage('Error: ' + error.message)
     } finally {
@@ -135,17 +86,25 @@ const SalesDashboard = () => {
   // Función para aplicar promoción
   const aplicarPromocion = async (promotionCode) => {
     setLoading(true)
-    setMessage('')
     try {
-      const data = await fetchData('/api/ventas/aplicar-promoción', {
+      const response = await fetch('/api/ventas/aplicar-promoción', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           transaction_id: transactionData.transaction_id,
           promotion_code: promotionCode,
         }),
       })
 
-      setMessage('Promoción aplicada: ' + data)
+      if (response.ok) {
+        const data = await response.text()
+        setMessage('Promoción aplicada: ' + data)
+        // Aquí deberías actualizar el estado con los descuentos aplicados
+      } else {
+        throw new Error('Error al aplicar promoción')
+      }
     } catch (error) {
       setMessage('Error: ' + error.message)
     } finally {
@@ -156,10 +115,12 @@ const SalesDashboard = () => {
   // Función para finalizar venta
   const finalizarVenta = async (paymentMethod, amountPaid) => {
     setLoading(true)
-    setMessage('')
     try {
-      const data = await fetchData('/api/ventas/finalizar', {
+      const response = await fetch('/api/ventas/finalizar', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           transaction_id: transactionData.transaction_id,
           payment_method: paymentMethod,
@@ -167,37 +128,19 @@ const SalesDashboard = () => {
         }),
       })
 
-      setTransactionData({
-        ...data,
-        change: data.amount_paid - data.total,
-      })
-      setCurrentStep(4)
-      setMessage('Venta finalizada con éxito')
+      if (response.ok) {
+        const data = await response.json()
+        setTransactionData({
+          ...data,
+          change: data.amount_paid - data.total,
+        })
+        setCurrentStep(4)
+        setMessage('Venta finalizada con éxito')
+      } else {
+        throw new Error('Error al finalizar venta')
+      }
     } catch (error) {
       setMessage('Error: ' + error.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Reintentar carga de datos
-  const retryLoadData = async () => {
-    setMessage('Cargando datos...')
-    try {
-      setLoading(true)
-
-      // Cargar clientes
-      const clientesData = await fetchData('/api/clientes')
-      setClientes(clientesData)
-
-      // Cargar sucursales
-      const sucursalesData = await fetchData('/api/sedes')
-      setSucursales(sucursalesData)
-
-      setDataLoaded(true)
-      setMessage('Datos cargados correctamente')
-    } catch (error) {
-      setMessage('Error al cargar datos: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -246,45 +189,16 @@ const SalesDashboard = () => {
           className={`p-4 mb-6 rounded-lg ${
             message.includes('Error')
               ? 'bg-red-100 text-red-700'
-              : message.includes('éxito')
-              ? 'bg-green-100 text-green-700'
-              : 'bg-blue-100 text-blue-700'
+              : 'bg-green-100 text-green-700'
           }`}
         >
           {message}
-          {message.includes('Error') && !dataLoaded && (
-            <button
-              onClick={retryLoadData}
-              className='ml-4 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700'
-            >
-              Reintentar
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Loading overlay */}
-      {loading && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white p-6 rounded-lg shadow-lg'>
-            <div className='flex items-center'>
-              <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3'></div>
-              <span>Procesando...</span>
-            </div>
-          </div>
         </div>
       )}
 
       {/* Paso 1: Iniciar transacción */}
       {currentStep === 1 && (
-        <IniciarTransaccion
-          onIniciar={iniciarTransaccion}
-          loading={loading}
-          clientes={clientes}
-          sucursales={sucursales}
-          dataLoaded={dataLoaded}
-          onRetry={retryLoadData}
-        />
+        <IniciarTransaccion onIniciar={iniciarTransaccion} loading={loading} />
       )}
 
       {/* Paso 2: Agregar productos */}
@@ -311,8 +225,6 @@ const SalesDashboard = () => {
       {currentStep === 4 && (
         <ResumenVenta
           transactionData={transactionData}
-          clientes={clientes}
-          sucursales={sucursales}
           onNuevaVenta={() => {
             setCurrentStep(1)
             setTransactionData({
@@ -335,38 +247,13 @@ const SalesDashboard = () => {
 }
 
 // Componente para iniciar transacción
-const IniciarTransaccion = ({
-  onIniciar,
-  loading,
-  clientes,
-  sucursales,
-  dataLoaded,
-  onRetry,
-}) => {
+const IniciarTransaccion = ({ onIniciar, loading }) => {
   const [customerId, setCustomerId] = useState('')
   const [branchId, setBranchId] = useState('')
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (customerId && branchId) {
-      onIniciar(customerId, branchId)
-    }
-  }
-
-  if (!dataLoaded) {
-    return (
-      <div className='text-center py-8'>
-        <div className='text-gray-500 mb-4'>
-          No se pudieron cargar los datos
-        </div>
-        <button
-          onClick={onRetry}
-          className='bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700'
-        >
-          Reintentar Carga de Datos
-        </button>
-      </div>
-    )
+    onIniciar(customerId, branchId)
   }
 
   return (
@@ -375,61 +262,31 @@ const IniciarTransaccion = ({
       <form onSubmit={handleSubmit} className='space-y-4'>
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
-            Seleccionar Cliente
+            Cedula del Cliente
           </label>
-          <select
+          <input
+            type='text'
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
             className='w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
             required
-            disabled={clientes.length === 0}
-          >
-            <option value=''>Seleccione un cliente</option>
-            {clientes.map((cliente) => (
-              <option key={cliente._id} value={cliente._id}>
-                {cliente.name} - {cliente.email} (Puntos: {cliente.points})
-              </option>
-            ))}
-          </select>
-          {clientes.length === 0 && (
-            <p className='text-sm text-red-600 mt-1'>
-              No hay clientes disponibles
-            </p>
-          )}
+          />
         </div>
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
-            Seleccionar Sucursal
+            ID de Sucursal
           </label>
-          <select
+          <input
+            type='text'
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
             className='w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
             required
-            disabled={sucursales.length === 0}
-          >
-            <option value=''>Seleccione una sucursal</option>
-            {sucursales.map((sucursal) => (
-              <option key={sucursal._id} value={sucursal.branch_id}>
-                {sucursal.name} - {sucursal.address}, {sucursal.city}
-              </option>
-            ))}
-          </select>
-          {sucursales.length === 0 && (
-            <p className='text-sm text-red-600 mt-1'>
-              No hay sucursales disponibles
-            </p>
-          )}
+          />
         </div>
         <button
           type='submit'
-          disabled={
-            loading ||
-            !customerId ||
-            !branchId ||
-            clientes.length === 0 ||
-            sucursales.length === 0
-          }
+          disabled={loading}
           className='w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50'
         >
           {loading ? 'Iniciando...' : 'Iniciar Venta'}
@@ -439,7 +296,419 @@ const IniciarTransaccion = ({
   )
 }
 
-// Los componentes AgregarProductos, ProcesarPago y ResumenVenta se mantienen igual que antes
-// [Aquí irían los mismos componentes de la respuesta anterior...]
+// Componente para agregar productos
+const AgregarProductos = ({
+  onAgregar,
+  onAplicarPromocion,
+  onFinalizar,
+  transactionData,
+  loading,
+}) => {
+  const [productId, setProductId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [promotionCode, setPromotionCode] = useState('')
+
+  const handleAgregarProducto = (e) => {
+    e.preventDefault()
+    onAgregar(productId, quantity)
+    setProductId('')
+    setQuantity(1)
+  }
+
+  const handleAplicarPromocion = (e) => {
+    e.preventDefault()
+    onAplicarPromocion(promotionCode)
+    setPromotionCode('')
+  }
+
+  return (
+    <div>
+      <h3 className='text-xl font-semibold mb-4'>Agregar Productos</h3>
+
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        {/* Formulario para agregar productos */}
+        <div className='bg-gray-50 p-4 rounded-lg'>
+          <h4 className='font-medium mb-3'>Agregar Producto</h4>
+          <form onSubmit={handleAgregarProducto} className='space-y-3'>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                ID del Producto
+              </label>
+              <input
+                type='text'
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                className='w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
+                required
+              />
+            </div>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Cantidad
+              </label>
+              <input
+                type='number'
+                min='1'
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value))}
+                className='w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
+                required
+              />
+            </div>
+            <button
+              type='submit'
+              disabled={loading}
+              className='w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50'
+            >
+              {loading ? 'Agregando...' : 'Agregar Producto'}
+            </button>
+          </form>
+        </div>
+
+        {/* Formulario para aplicar promoción */}
+        <div className='bg-gray-50 p-4 rounded-lg'>
+          <h4 className='font-medium mb-3'>Aplicar Promoción</h4>
+          <form onSubmit={handleAplicarPromocion} className='space-y-3'>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Código de Promoción
+              </label>
+              <input
+                type='text'
+                value={promotionCode}
+                onChange={(e) => setPromotionCode(e.target.value)}
+                className='w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
+              />
+            </div>
+            <button
+              type='submit'
+              disabled={loading}
+              className='w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50'
+            >
+              {loading ? 'Aplicando...' : 'Aplicar Promoción'}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Resumen actual */}
+      <div className='mt-6 p-4 border border-gray-200 rounded-lg'>
+        <h4 className='font-medium mb-3'>Resumen de Transacción</h4>
+        <p>
+          <span className='font-medium'>ID de Transacción:</span>{' '}
+          {transactionData.transaction_id}
+        </p>
+        <p>
+          <span className='font-medium'>Cliente:</span>{' '}
+          {transactionData.customer_id}
+        </p>
+        <p>
+          <span className='font-medium'>Sucursal:</span>{' '}
+          {transactionData.branch_id}
+        </p>
+        <p>
+          <span className='font-medium'>Productos:</span>{' '}
+          {transactionData.items.length}
+        </p>
+        <p>
+          <span className='font-medium'>Subtotal:</span> $
+          {transactionData.subtotal?.toFixed(2)}
+        </p>
+        <p>
+          <span className='font-medium'>Descuentos:</span> $
+          {transactionData.discounts
+            .reduce((acc, d) => acc + d.amount, 0)
+            ?.toFixed(2)}
+        </p>
+        <p>
+          <span className='font-medium'>Total:</span> $
+          {transactionData.total?.toFixed(2)}
+        </p>
+      </div>
+
+      <button
+        onClick={onFinalizar}
+        className='mt-6 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+      >
+        Proceder al Pago
+      </button>
+    </div>
+  )
+}
+
+// Componente para procesar pago
+const ProcesarPago = ({ onPagar, transactionData, loading }) => {
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [amountPaid, setAmountPaid] = useState(0)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onPagar(paymentMethod, parseFloat(amountPaid))
+  }
+
+  const calculateChange = () => {
+    const total = transactionData.total || 0
+    const paid = parseFloat(amountPaid) || 0
+    return paid - total
+  }
+
+  return (
+    <div>
+      <h3 className='text-xl font-semibold mb-4'>Procesar Pago</h3>
+
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        {/* Resumen de la compra */}
+        <div className='bg-gray-50 p-4 rounded-lg'>
+          <h4 className='font-medium mb-3'>Resumen de Compra</h4>
+          <p>
+            <span className='font-medium'>ID de Transacción:</span>{' '}
+            {transactionData.transaction_id}
+          </p>
+          <p>
+            <span className='font-medium'>Cliente:</span>{' '}
+            {transactionData.customer_id}
+          </p>
+          <p>
+            <span className='font-medium'>Total a Pagar:</span> $
+            {transactionData.total?.toFixed(2)}
+          </p>
+
+          {transactionData.items.length > 0 && (
+            <div className='mt-3'>
+              <h5 className='font-medium'>Productos:</h5>
+              <ul className='list-disc list-inside ml-2'>
+                {transactionData.items.map((item, index) => (
+                  <li key={index}>
+                    {item.product_id} - {item.quantity} x $
+                    {item.unit_price?.toFixed(2)} = ${item.subtotal?.toFixed(2)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {transactionData.discounts.length > 0 && (
+            <div className='mt-3'>
+              <h5 className='font-medium'>Descuentos:</h5>
+              <ul className='list-disc list-inside ml-2'>
+                {transactionData.discounts.map((discount, index) => (
+                  <li key={index}>
+                    {discount.promotion_code} - ${discount.amount?.toFixed(2)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Formulario de pago */}
+        <div className='bg-gray-50 p-4 rounded-lg'>
+          <h4 className='font-medium mb-3'>Información de Pago</h4>
+          <form onSubmit={handleSubmit} className='space-y-4'>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Método de Pago
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className='w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
+              >
+                <option value='cash'>Efectivo</option>
+                <option value='card'>Tarjeta</option>
+                <option value='transfer'>Transferencia</option>
+              </select>
+            </div>
+
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Monto Pagado
+              </label>
+              <input
+                type='number'
+                min={transactionData.total || 0}
+                step='0.01'
+                value={amountPaid}
+                onChange={(e) => setAmountPaid(e.target.value)}
+                className='w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
+                required
+              />
+            </div>
+
+            <div className='p-3 bg-blue-50 rounded-md'>
+              <p className='font-medium'>
+                Cambio: ${calculateChange().toFixed(2)}
+              </p>
+            </div>
+
+            <button
+              type='submit'
+              disabled={loading || calculateChange() < 0}
+              className='w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50'
+            >
+              {loading ? 'Procesando...' : 'Finalizar Venta'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Componente para mostrar resumen de venta
+const ResumenVenta = ({ transactionData, onNuevaVenta }) => {
+  return (
+    <div>
+      <h3 className='text-xl font-semibold mb-4'>Venta Completada</h3>
+
+      <div className='bg-green-50 p-4 rounded-lg mb-6'>
+        <div className='flex items-center'>
+          <svg
+            className='w-8 h-8 text-green-600 mr-3'
+            fill='none'
+            stroke='currentColor'
+            viewBox='0 0 24 24'
+            xmlns='http://www.w3.org/2000/svg'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              strokeWidth='2'
+              d='M5 13l4 4L19 7'
+            ></path>
+          </svg>
+          <div>
+            <h4 className='text-lg font-medium text-green-800'>
+              ¡Venta completada con éxito!
+            </h4>
+            <p className='text-green-600'>
+              ID de Transacción: {transactionData.transaction_id}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className='bg-gray-50 p-4 rounded-lg mb-6'>
+        <h4 className='font-medium mb-3'>Detalles de la Venta</h4>
+
+        <div className='grid grid-cols-2 gap-4 mb-4'>
+          <div>
+            <p>
+              <span className='font-medium'>Cliente:</span>{' '}
+              {transactionData.customer_id}
+            </p>
+            <p>
+              <span className='font-medium'>Sucursal:</span>{' '}
+              {transactionData.branch_id}
+            </p>
+            <p>
+              <span className='font-medium'>Fecha:</span>{' '}
+              {new Date(transactionData.completed_at).toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p>
+              <span className='font-medium'>Método de Pago:</span>{' '}
+              {transactionData.payment_method}
+            </p>
+            <p>
+              <span className='font-medium'>Monto Pagado:</span> $
+              {transactionData.amount_paid?.toFixed(2)}
+            </p>
+            <p>
+              <span className='font-medium'>Cambio:</span> $
+              {transactionData.change?.toFixed(2)}
+            </p>
+          </div>
+        </div>
+
+        <div className='mb-4'>
+          <h5 className='font-medium border-b pb-1 mb-2'>Productos</h5>
+          <table className='w-full'>
+            <thead>
+              <tr className='border-b'>
+                <th className='text-left py-2'>Producto</th>
+                <th className='text-right py-2'>Cantidad</th>
+                <th className='text-right py-2'>Precio Unitario</th>
+                <th className='text-right py-2'>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactionData.items.map((item, index) => (
+                <tr key={index} className='border-b'>
+                  <td className='py-2'>{item.product_id}</td>
+                  <td className='text-right py-2'>{item.quantity}</td>
+                  <td className='text-right py-2'>
+                    ${item.unit_price?.toFixed(2)}
+                  </td>
+                  <td className='text-right py-2'>
+                    ${item.subtotal?.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {transactionData.discounts.length > 0 && (
+          <div className='mb-4'>
+            <h5 className='font-medium border-b pb-1 mb-2'>
+              Descuentos Aplicados
+            </h5>
+            <table className='w-full'>
+              <thead>
+                <tr className='border-b'>
+                  <th className='text-left py-2'>Tipo</th>
+                  <th className='text-left py-2'>Código</th>
+                  <th className='text-right py-2'>Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactionData.discounts.map((discount, index) => (
+                  <tr key={index} className='border-b'>
+                    <td className='py-2'>{discount.type}</td>
+                    <td className='py-2'>{discount.promotion_code}</td>
+                    <td className='text-right py-2'>
+                      ${discount.amount?.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className='flex justify-end'>
+          <div className='w-64'>
+            <div className='flex justify-between py-2'>
+              <span className='font-medium'>Subtotal:</span>
+              <span>${transactionData.subtotal?.toFixed(2)}</span>
+            </div>
+            <div className='flex justify-between py-2 border-b'>
+              <span className='font-medium'>Descuentos:</span>
+              <span>
+                -$
+                {transactionData.discounts
+                  .reduce((acc, d) => acc + d.amount, 0)
+                  ?.toFixed(2)}
+              </span>
+            </div>
+            <div className='flex justify-between py-2 font-bold text-lg'>
+              <span>Total:</span>
+              <span>${transactionData.total?.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={onNuevaVenta}
+        className='w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+      >
+        Iniciar Nueva Venta
+      </button>
+    </div>
+  )
+}
 
 export default SalesDashboard
