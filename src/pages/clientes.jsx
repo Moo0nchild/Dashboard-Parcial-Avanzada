@@ -690,7 +690,7 @@ export function Clientes() {
       </div>
 
       {/* Net Promoter Score */}
-      <div className='bg-white p-6 rounded-lg shadow-md'>
+      {/* <div className='bg-white p-6 rounded-lg shadow-md'>
         <h2 className='text-xl font-semibold mb-4'>Net Promoter Score (NPS)</h2>
 
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mb-6'>
@@ -770,12 +770,12 @@ export function Clientes() {
               </div>
             </div>
           </div>
-        </div>
+        </div> 
 
-        <div className='bg-white p-4 rounded-lg border border-gray-200'>
+       <div className='bg-white p-4 rounded-lg border border-gray-200'>
           <Line options={npsOptions} data={npsData} />
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }
