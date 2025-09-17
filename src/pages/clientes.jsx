@@ -1,781 +1,543 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
-  PointElement,
-  LineElement,
   Title,
   Tooltip,
   Legend,
   ArcElement,
-} from 'chart.js'
-import { Bar, Doughnut, Line } from 'react-chartjs-2'
+  PointElement,
+  LineElement
+} from 'chart.js';
 
 // Registrar componentes de Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  PointElement,
-  LineElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement
-)
+  ArcElement,
+  PointElement,
+  LineElement
+);
+
 export function Clientes() {
-  // Estado para los datos de clientes
-  const [customerData, setCustomerData] = useState({
-    purchasePatterns: {
-      avgTicket: 0,
-      itemsPerTransaction: 0,
-      avgTicketHistory: [],
-      itemsPerTransactionHistory: [],
-    },
-    customerSegmentation: {
-      newVsRecurring: {
-        new: 0,
-        recurring: 0,
-      },
-      valueSegmentation: {
-        highValue: 0,
-        mediumValue: 0,
-        lowValue: 0,
-      },
-      highValueCustomers: [],
-    },
-    frequentlyBoughtTogether: [],
-    promotionEffectiveness: [],
-    netPromoterScore: {
-      score: 0,
-      promoters: 0,
-      passives: 0,
-      detractors: 0,
-      trend: [],
-    },
-  })
+  const [customers, setCustomers] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedSegment, setSelectedSegment] = useState('all');
+  const [customerSegments, setCustomerSegments] = useState({});
+  const [purchasePatterns, setPurchasePatterns] = useState({});
+  const [frequentlyBoughtTogether, setFrequentlyBoughtTogether] = useState([]);
+  const [promotionEffectiveness, setPromotionEffectiveness] = useState({});
 
-  const [loading, setLoading] = useState(true)
+  // Función para obtener datos de la API
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Obtener clientes
+      const customersResponse = await fetch('https://api-megamart.onrender.com/api/clientes');
+      const customersData = await customersResponse.json();
+      setCustomers(customersData);
+      
+      // Obtener transacciones
+      const transactionsResponse = await fetch('https://api-megamart.onrender.com/api/transacciones');
+      const transactionsData = await transactionsResponse.json();
+      setTransactions(transactionsData);
+      
+      // Obtener productos
+      const productsResponse = await fetch('https://api-megamart.onrender.com/api/productos');
+      const productsData = await productsResponse.json();
+      setProducts(productsData);
+      
+      // Calcular segmentación de clientes
+      const segments = calculateCustomerSegments(customersData, transactionsData);
+      setCustomerSegments(segments);
+      
+      // Calcular patrones de compra
+      const patterns = calculatePurchasePatterns(transactionsData);
+      setPurchasePatterns(patterns);
+      
+      // Calcular productos comprados juntos (simulado)
+      const boughtTogether = calculateFrequentlyBoughtTogether(transactionsData, productsData);
+      setFrequentlyBoughtTogether(boughtTogether);
+      
+      // Calcular efectividad de promociones (simulado)
+      const promoEffectiveness = calculatePromotionEffectiveness(transactionsData);
+      setPromotionEffectiveness(promoEffectiveness);
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Datos simulados
-  const simulatedData = {
-    purchasePatterns: {
-      avgTicket: 18500,
-      itemsPerTransaction: 4.2,
-      avgTicketHistory: [
-        { month: 'Ene', value: 17200 },
-        { month: 'Feb', value: 17800 },
-        { month: 'Mar', value: 18100 },
-        { month: 'Abr', value: 17900 },
-        { month: 'May', value: 18300 },
-        { month: 'Jun', value: 18500 },
-      ],
-      itemsPerTransactionHistory: [
-        { month: 'Ene', value: 3.8 },
-        { month: 'Feb', value: 4.0 },
-        { month: 'Mar', value: 4.1 },
-        { month: 'Abr', value: 4.0 },
-        { month: 'May', value: 4.2 },
-        { month: 'Jun', value: 4.2 },
-      ],
-    },
-    customerSegmentation: {
-      newVsRecurring: {
-        new: 35,
-        recurring: 65,
-      },
-      valueSegmentation: {
-        highValue: 15,
-        mediumValue: 45,
-        lowValue: 40,
-      },
-      highValueCustomers: [
-        {
-          id: 'CLT001',
-          name: 'María González',
-          totalSpent: 485000,
-          visits: 28,
-        },
-        {
-          id: 'CLT005',
-          name: 'Carlos Rodríguez',
-          totalSpent: 412000,
-          visits: 24,
-        },
-        { id: 'CLT012', name: 'Ana Silva', totalSpent: 398000, visits: 22 },
-        { id: 'CLT023', name: 'Jorge Méndez', totalSpent: 365000, visits: 19 },
-        {
-          id: 'CLT034',
-          name: 'Laura Fernández',
-          totalSpent: 342000,
-          visits: 18,
-        },
-      ],
-    },
-    frequentlyBoughtTogether: [
-      {
-        product1: 'Pan de Molde',
-        product2: 'Mantequilla',
-        frequency: 78,
-        confidence: 0.65,
-      },
-      { product1: 'Café', product2: 'Leche', frequency: 72, confidence: 0.68 },
-      {
-        product1: 'Pasta',
-        product2: 'Salsa de Tomate',
-        frequency: 65,
-        confidence: 0.62,
-      },
-      {
-        product1: 'Yogurt',
-        product2: 'Cereal',
-        frequency: 58,
-        confidence: 0.59,
-      },
-      {
-        product1: 'Arroz',
-        product2: 'Aceite',
-        frequency: 52,
-        confidence: 0.55,
-      },
-      {
-        product1: 'Huevos',
-        product2: 'Tocino',
-        frequency: 47,
-        confidence: 0.51,
-      },
-      { product1: 'Queso', product2: 'Jamón', frequency: 43, confidence: 0.48 },
-      {
-        product1: 'Papas',
-        product2: 'Bebidas',
-        frequency: 39,
-        confidence: 0.45,
-      },
-    ],
-    promotionEffectiveness: [
-      {
-        name: '2x1 en Lácteos',
-        redemptionRate: 42,
-        salesIncrease: 28,
-        roi: 3.8,
-      },
-      {
-        name: 'Descuento 30% Panadería',
-        redemptionRate: 38,
-        salesIncrease: 32,
-        roi: 4.2,
-      },
-      {
-        name: '3x2 en Bebidas',
-        redemptionRate: 35,
-        salesIncrease: 25,
-        roi: 3.2,
-      },
-      {
-        name: 'Promo Familiar',
-        redemptionRate: 28,
-        salesIncrease: 19,
-        roi: 2.4,
-      },
-      {
-        name: 'Descuento Nocturno',
-        redemptionRate: 22,
-        salesIncrease: 15,
-        roi: 1.8,
-      },
-    ],
-    netPromoterScore: {
-      score: 68,
-      promoters: 45,
-      passives: 35,
-      detractors: 20,
-      trend: [
-        { month: 'Ene', score: 62 },
-        { month: 'Feb', score: 64 },
-        { month: 'Mar', score: 65 },
-        { month: 'Abr', score: 66 },
-        { month: 'May', score: 67 },
-        { month: 'Jun', score: 68 },
-      ],
-    },
-  }
+  // Calcular segmentación de clientes
+  const calculateCustomerSegments = (customers, transactions) => {
+    // Agrupar transacciones por cliente
+    const transactionsByCustomer = {};
+    transactions.forEach(transaction => {
+      if (transaction.customer_id) {
+        if (!transactionsByCustomer[transaction.customer_id]) {
+          transactionsByCustomer[transaction.customer_id] = [];
+        }
+        transactionsByCustomer[transaction.customer_id].push(transaction);
+      }
+    });
 
-  // Configuración para el gráfico de patrones de compra
-  const purchasePatternsOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Evolución del Ticket Promedio',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: false,
-        title: {
-          display: true,
-          text: 'Monto ($)',
-        },
-      },
-    },
-  }
+    // Segmentar clientes
+    const segments = {
+      new: [],
+      recurring: [],
+      highValue: [],
+      occasional: []
+    };
 
-  const purchasePatternsData = {
-    labels: customerData.purchasePatterns.avgTicketHistory.map(
-      (item) => item.month
-    ),
+    customers.forEach(customer => {
+      const customerTransactions = transactionsByCustomer[customer.cedula] || [];
+      const transactionCount = customerTransactions.length;
+      const totalSpent = customerTransactions.reduce((sum, t) => sum + (t.total || 0), 0);
+      
+      if (transactionCount === 0) {
+        segments.new.push(customer);
+      } else if (transactionCount >= 3) {
+        segments.recurring.push(customer);
+      }
+      
+      if (totalSpent > 100000) {
+        segments.highValue.push(customer);
+      } else if (transactionCount > 0 && totalSpent < 50000) {
+        segments.occasional.push(customer);
+      }
+    });
+
+    return segments;
+  };
+
+  // Calcular patrones de compra
+  const calculatePurchasePatterns = (transactions) => {
+    const completedTransactions = transactions.filter(t => t.status === 'completed');
+    const totalSales = completedTransactions.reduce((sum, t) => sum + (t.total || 0), 0);
+    const totalItems = completedTransactions.reduce((sum, t) => {
+      return sum + (t.items ? t.items.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0) : 0);
+    }, 0);
+    
+    const avgTicket = completedTransactions.length > 0 ? totalSales / completedTransactions.length : 0;
+    const avgItemsPerTransaction = completedTransactions.length > 0 ? totalItems / completedTransactions.length : 0;
+    
+    return {
+      avgTicket,
+      avgItemsPerTransaction,
+      totalTransactions: completedTransactions.length,
+      totalSales
+    };
+  };
+
+  // Calcular productos comprados juntos (simulado)
+  const calculateFrequentlyBoughtTogether = (transactions, products) => {
+    // Simular datos de productos comprados juntos
+    const productMap = {};
+    products.forEach(product => {
+      productMap[product._id] = product.name;
+    });
+    
+    // En un caso real, se analizarían las transacciones para encontrar patrones
+    return [
+      { product1: "Coca Cola 500ml", product2: "Pan blanco", frequency: 42 },
+      { product1: "Leche 1L", product2: "Pan Integral", frequency: 38 },
+      { product1: "Yogurt", product2: "Croissant", frequency: 35 },
+      { product1: "Pepsi 500ml", product2: "Galleta", frequency: 31 },
+      { product1: "Quesillo", product2: "Mantequilla", frequency: 28 }
+    ];
+  };
+
+  // Calcular efectividad de promociones (simulado)
+  const calculatePromotionEffectiveness = (transactions) => {
+    const transactionsWithPromotions = transactions.filter(t => t.discounts && t.discounts.length > 0);
+    const transactionsWithoutPromotions = transactions.filter(t => !t.discounts || t.discounts.length === 0);
+    
+    const avgWithPromo = transactionsWithPromotions.length > 0 ? 
+      transactionsWithPromotions.reduce((sum, t) => sum + (t.total || 0), 0) / transactionsWithPromotions.length : 0;
+    
+    const avgWithoutPromo = transactionsWithoutPromotions.length > 0 ? 
+      transactionsWithoutPromotions.reduce((sum, t) => sum + (t.total || 0), 0) / transactionsWithoutPromotions.length : 0;
+    
+    return {
+      withPromotions: transactionsWithPromotions.length,
+      withoutPromotions: transactionsWithoutPromotions.length,
+      avgWithPromo,
+      avgWithoutPromo,
+      uplift: avgWithPromo > 0 ? ((avgWithPromo - avgWithoutPromo) / avgWithoutPromo) * 100 : 0
+    };
+  };
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Configuración del gráfico de segmentación de clientes
+  const segmentationChartData = {
+    labels: ['Nuevos', 'Recurrentes', 'Alto Valor', 'Ocasionales'],
     datasets: [
       {
-        label: 'Ticket Promedio',
-        data: customerData.purchasePatterns.avgTicketHistory.map(
-          (item) => item.value
-        ),
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-      },
-    ],
-  }
-
-  // Configuración para el gráfico de items por transacción
-  const itemsPerTransactionOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Evolución de Items por Transacción',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: false,
-        title: {
-          display: true,
-          text: 'Cantidad',
-        },
-      },
-    },
-  }
-
-  const itemsPerTransactionData = {
-    labels: customerData.purchasePatterns.itemsPerTransactionHistory.map(
-      (item) => item.month
-    ),
-    datasets: [
-      {
-        label: 'Items por Transacción',
-        data: customerData.purchasePatterns.itemsPerTransactionHistory.map(
-          (item) => item.value
-        ),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-      },
-    ],
-  }
-
-  // Configuración para el gráfico de segmentación
-  const segmentationOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-    },
-  }
-
-  const newVsRecurringData = {
-    labels: ['Clientes Nuevos', 'Clientes Recurrentes'],
-    datasets: [
-      {
-        label: 'Distribución de Clientes',
+        label: 'Cantidad de Clientes',
         data: [
-          customerData.customerSegmentation.newVsRecurring.new,
-          customerData.customerSegmentation.newVsRecurring.recurring,
-        ],
-        backgroundColor: ['rgba(54, 162, 235, 0.8)', 'rgba(75, 192, 192, 0.8)'],
-        borderColor: ['rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)'],
-        borderWidth: 1,
-      },
-    ],
-  }
-
-  const valueSegmentationData = {
-    labels: ['Alto Valor', 'Valor Medio', 'Bajo Valor'],
-    datasets: [
-      {
-        label: 'Segmentación por Valor',
-        data: [
-          customerData.customerSegmentation.valueSegmentation.highValue,
-          customerData.customerSegmentation.valueSegmentation.mediumValue,
-          customerData.customerSegmentation.valueSegmentation.lowValue,
+          customerSegments.new?.length || 0,
+          customerSegments.recurring?.length || 0,
+          customerSegments.highValue?.length || 0,
+          customerSegments.occasional?.length || 0
         ],
         backgroundColor: [
-          'rgba(75, 192, 192, 0.8)',
-          'rgba(255, 205, 86, 0.8)',
-          'rgba(255, 99, 132, 0.8)',
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(75, 192, 192, 0.7)'
         ],
         borderColor: [
-          'rgba(75, 192, 192, 1)',
-          'rgba(255, 205, 86, 1)',
           'rgba(255, 99, 132, 1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)'
         ],
         borderWidth: 1,
       },
     ],
-  }
+  };
 
-  // Configuración para el gráfico de efectividad de promociones
-  const promotionsOptions = {
-    indexAxis: 'y',
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Efectividad de Promociones',
-      },
-    },
-  }
-
-  const promotionsData = {
-    labels: customerData.promotionEffectiveness.map((item) => item.name),
+  // Configuración del gráfico de efectividad de promociones
+  const promotionChartData = {
+    labels: ['Con Promociones', 'Sin Promociones'],
     datasets: [
       {
-        label: 'ROI (Return on Investment)',
-        data: customerData.promotionEffectiveness.map((item) => item.roi),
-        backgroundColor: 'rgba(153, 102, 255, 0.8)',
-        borderColor: 'rgba(153, 102, 255, 1)',
+        label: 'Ticket Promedio ($)',
+        data: [
+          promotionEffectiveness.avgWithPromo || 0,
+          promotionEffectiveness.avgWithoutPromo || 0
+        ],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 99, 132, 0.7)'
+        ],
+        borderColor: [
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 99, 132, 1)'
+        ],
         borderWidth: 1,
       },
     ],
-  }
+  };
 
-  // Configuración para el gráfico de NPS
-  const npsOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Evolución del Net Promoter Score',
-      },
-    },
-    scales: {
-      y: {
-        min: 0,
-        max: 100,
-        title: {
-          display: true,
-          text: 'Puntuación NPS',
-        },
-      },
-    },
-  }
-
-  const npsData = {
-    labels: customerData.netPromoterScore.trend.map((item) => item.month),
+  // Configuración del gráfico de productos comprados juntos
+  const boughtTogetherChartData = {
+    labels: frequentlyBoughtTogether.map(item => `${item.product1} + ${item.product2}`),
     datasets: [
       {
-        label: 'Net Promoter Score',
-        data: customerData.netPromoterScore.trend.map((item) => item.score),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        label: 'Frecuencia de Compra Conjunta',
+        data: frequentlyBoughtTogether.map(item => item.frequency),
+        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1,
       },
     ],
-  }
+  };
 
-  // Simular la obtención de datos
-  useEffect(() => {
-    // Simular carga de datos
-    const timer = setTimeout(() => {
-      setCustomerData(simulatedData)
-      setLoading(false)
-    }, 1000)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Función para formatear números como moneda
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-    }).format(amount)
-  }
-
-  // Función para obtener el color según el valor de NPS
-  const getNpsColor = (score) => {
-    if (score >= 70) return 'bg-green-100 text-green-800'
-    if (score >= 50) return 'bg-yellow-100 text-yellow-800'
-    if (score >= 0) return 'bg-orange-100 text-orange-800'
-    return 'bg-red-100 text-red-800'
-  }
-
-  // Función para obtener la clasificación según el valor de NPS
-  const getNpsClassification = (score) => {
-    if (score >= 70) return 'Excelente'
-    if (score >= 50) return 'Bueno'
-    if (score >= 0) return 'Regular'
-    return 'Pobre'
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className='container mx-auto p-4'>
-        <div className='flex justify-center items-center h-64'>
-          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500'></div>
-          <span className='ml-3 text-gray-600'>
-            Cargando datos de clientes...
-          </span>
-        </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className='container mx-auto p-4'>
-      <h1 className='text-3xl font-bold mb-6'>Insights del Cliente</h1>
+    <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Insights del Cliente</h1>
+        <p className="text-gray-600">Análisis de comportamiento y segmentación de clientes</p>
+      </div>
 
-      {/* Patrón de compra promedio */}
-      <div className='bg-white p-6 rounded-lg shadow-md mb-6'>
-        <h2 className='text-xl font-semibold mb-4'>
-          Patrón de Compra Promedio
-        </h2>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mb-6'>
-          <div className='bg-blue-50 p-4 rounded-lg'>
-            <h3 className='text-lg font-medium text-blue-800 mb-2'>
-              Ticket Promedio
-            </h3>
-            <p className='text-3xl font-bold text-blue-600'>
-              {formatCurrency(customerData.purchasePatterns.avgTicket)}
-            </p>
+      {/* Filtros */}
+      <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="w-full md:w-1/3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Segmento de Cliente</label>
+            <select 
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              value={selectedSegment}
+              onChange={(e) => setSelectedSegment(e.target.value)}
+            >
+              <option value="all">Todos los clientes</option>
+              <option value="new">Clientes Nuevos</option>
+              <option value="recurring">Clientes Recurrentes</option>
+              <option value="highValue">Clientes de Alto Valor</option>
+              <option value="occasional">Clientes Ocasionales</option>
+            </select>
           </div>
-          <div className='bg-pink-50 p-4 rounded-lg'>
-            <h3 className='text-lg font-medium text-pink-800 mb-2'>
-              Items por Transacción
-            </h3>
-            <p className='text-3xl font-bold text-pink-600'>
-              {customerData.purchasePatterns.itemsPerTransaction}
-            </p>
+          
+          <div className="w-full md:w-1/3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Rango de Fechas</label>
+            <select 
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="7">Últimos 7 días</option>
+              <option value="30">Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="365">Último año</option>
+            </select>
           </div>
-        </div>
-
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-          <div className='bg-white p-4 rounded-lg border border-gray-200'>
-            <Line
-              options={purchasePatternsOptions}
-              data={purchasePatternsData}
-            />
-          </div>
-          <div className='bg-white p-4 rounded-lg border border-gray-200'>
-            <Line
-              options={itemsPerTransactionOptions}
-              data={itemsPerTransactionData}
-            />
+          
+          <div className="w-full md:w-1/3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sucursal</label>
+            <select 
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">Todas las sucursales</option>
+              <option value="Sucursal_1">Supermercado Central</option>
+              <option value="Sucursal_2">Supermercado Norte</option>
+              <option value="Sucursal_3">Supermercado Sur</option>
+              <option value="Sucursal_4">Supermercado Express</option>
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Segmentación de clientes */}
-      <div className='bg-white p-6 rounded-lg shadow-md mb-6'>
-        <h2 className='text-xl font-semibold mb-4'>Segmentación de Clientes</h2>
+      {/* Resumen de clientes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700">Total Clientes</h3>
+          <p className="text-2xl font-bold text-blue-600">{customers.length}</p>
+          <p className="text-sm text-gray-500 mt-2">Registrados en el sistema</p>
+        </div>
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mb-6'>
-          <div className='bg-white p-4 rounded-lg border border-gray-200'>
-            <Doughnut options={segmentationOptions} data={newVsRecurringData} />
-            <div className='text-center mt-2'>
-              <p className='text-sm text-gray-600'>
-                Nuevos: {customerData.customerSegmentation.newVsRecurring.new}%
-              </p>
-              <p className='text-sm text-gray-600'>
-                Recurrentes:{' '}
-                {customerData.customerSegmentation.newVsRecurring.recurring}%
-              </p>
-            </div>
-          </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700">Ticket Promedio</h3>
+          <p className="text-2xl font-bold text-green-600">${purchasePatterns.avgTicket?.toFixed(2) || '0.00'}</p>
+          <p className="text-sm text-gray-500 mt-2">Por transacción</p>
+        </div>
 
-          <div className='bg-white p-4 rounded-lg border border-gray-200'>
-            <Doughnut
-              options={segmentationOptions}
-              data={valueSegmentationData}
-            />
-            <div className='text-center mt-2'>
-              <p className='text-sm text-gray-600'>
-                Alto Valor:{' '}
-                {customerData.customerSegmentation.valueSegmentation.highValue}%
-              </p>
-              <p className='text-sm text-gray-600'>
-                Valor Medio:{' '}
-                {
-                  customerData.customerSegmentation.valueSegmentation
-                    .mediumValue
-                }
-                %
-              </p>
-              <p className='text-sm text-gray-600'>
-                Bajo Valor:{' '}
-                {customerData.customerSegmentation.valueSegmentation.lowValue}%
-              </p>
-            </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700">Items por Transacción</h3>
+          <p className="text-2xl font-bold text-purple-600">{purchasePatterns.avgItemsPerTransaction?.toFixed(1) || '0.0'}</p>
+          <p className="text-sm text-gray-500 mt-2">Promedio</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700">Clientes Recurrentes</h3>
+          <p className="text-2xl font-bold text-orange-600">{customerSegments.recurring?.length || 0}</p>
+          <p className="text-sm text-gray-500 mt-2">+3 compras</p>
+        </div>
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Segmentación de clientes */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Segmentación de Clientes</h3>
+          <div className="h-64">
+            <Doughnut data={segmentationChartData} options={{
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'top',
+                },
+                title: {
+                  display: true,
+                  text: 'Distribución de Segmentos'
+                },
+              },
+            }} />
           </div>
         </div>
 
-        <div className='mt-6'>
-          <h3 className='text-lg font-medium mb-3'>Clientes de Alto Valor</h3>
-          <div className='overflow-x-auto'>
-            <table className='min-w-full divide-y divide-gray-200'>
-              <thead className='bg-gray-50'>
+        {/* Efectividad de promociones */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Efectividad de Promociones</h3>
+          <div className="h-64">
+            <Bar data={promotionChartData} options={{
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'top',
+                },
+                title: {
+                  display: true,
+                  text: 'Ticket Promedio con/sin Promociones'
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: 'Monto en pesos ($)'
+                  }
+                }
+              }
+            }} />
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Uplift por promociones: </span>
+              {promotionEffectiveness.uplift?.toFixed(1) || '0.0'}%
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Productos comprados juntos */}
+      <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Productos Frecuentemente Comprados Juntos</h3>
+        <div className="h-96">
+          <Bar data={boughtTogetherChartData} options={{
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              title: {
+                display: true,
+                text: 'Frecuencia de Compra Conjunta'
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Número de Transacciones'
+                }
+              }
+            },
+            indexAxis: 'y',
+          }} />
+        </div>
+      </div>
+
+      {/* Tablas de segmentos de clientes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Clientes de alto valor */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+            <span className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+            Clientes de Alto Valor
+          </h3>
+          <div className="overflow-x-auto max-h-80">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                    Cliente
-                  </th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                    Total Gastado
-                  </th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                    Visitas
-                  </th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                    Valor Promedio por Visita
-                  </th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puntos</th>
                 </tr>
               </thead>
-              <tbody className='bg-white divide-y divide-gray-200'>
-                {customerData.customerSegmentation.highValueCustomers.map(
-                  (customer, index) => (
-                    <tr
-                      key={customer.id}
-                      className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                    >
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='flex items-center'>
-                          <div className='ml-4'>
-                            <div className='text-sm font-medium text-gray-900'>
-                              {customer.name}
-                            </div>
-                            <div className='text-sm text-gray-500'>
-                              {customer.id}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                        {formatCurrency(customer.totalSpent)}
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                        {customer.visits}
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                        {formatCurrency(customer.totalSpent / customer.visits)}
-                      </td>
-                    </tr>
-                  )
+              <tbody className="bg-white divide-y divide-gray-200">
+                {customerSegments.highValue?.slice(0, 5).map(customer => (
+                  <tr key={customer._id}>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-yellow-600 font-bold">{customer.points}</td>
+                  </tr>
+                ))}
+                {(!customerSegments.highValue || customerSegments.highValue.length === 0) && (
+                  <tr>
+                    <td colSpan="3" className="px-4 py-4 text-sm text-gray-500 text-center">No hay clientes de alto valor</td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
+          {customerSegments.highValue?.length > 5 && (
+            <p className="text-sm text-blue-600 mt-2">+{customerSegments.highValue.length - 5} más...</p>
+          )}
         </div>
-      </div>
 
-      {/* Productos frecuentemente comprados juntos */}
-      <div className='bg-white p-6 rounded-lg shadow-md mb-6'>
-        <h2 className='text-xl font-semibold mb-4'>
-          Productos Frecuentemente Comprados Juntos
-        </h2>
-        <div className='overflow-x-auto'>
-          <table className='min-w-full divide-y divide-gray-200'>
-            <thead className='bg-gray-50'>
-              <tr>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Producto 1
-                </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Producto 2
-                </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Frecuencia
-                </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Confianza
-                </th>
-              </tr>
-            </thead>
-            <tbody className='bg-white divide-y divide-gray-200'>
-              {customerData.frequentlyBoughtTogether.map((item, index) => (
-                <tr
-                  key={index}
-                  className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                >
-                  <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900'>
-                    {item.product1}
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                    {item.product2}
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                    {item.frequency}%
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                    {Math.round(item.confidence * 100)}%
-                  </td>
+        {/* Clientes recurrentes */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+            <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+            Clientes Recurrentes
+          </h3>
+          <div className="overflow-x-auto max-h-80">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puntos</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {customerSegments.recurring?.slice(0, 5).map(customer => (
+                  <tr key={customer._id}>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-bold">{customer.points}</td>
+                  </tr>
+                ))}
+                {(!customerSegments.recurring || customerSegments.recurring.length === 0) && (
+                  <tr>
+                    <td colSpan="3" className="px-4 py-4 text-sm text-gray-500 text-center">No hay clientes recurrentes</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {customerSegments.recurring?.length > 5 && (
+            <p className="text-sm text-blue-600 mt-2">+{customerSegments.recurring.length - 5} más...</p>
+          )}
         </div>
       </div>
 
-      {/* Efectividad de promociones activas */}
-      <div className='bg-white p-6 rounded-lg shadow-md mb-6'>
-        <h2 className='text-xl font-semibold mb-4'>
-          Efectividad de Promociones Activas
-        </h2>
-
-        <div className='mb-6'>
-          <Bar options={promotionsOptions} data={promotionsData} />
-        </div>
-
-        <div className='overflow-x-auto'>
-          <table className='min-w-full divide-y divide-gray-200'>
-            <thead className='bg-gray-50'>
-              <tr>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Promoción
-                </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Tasa de Redención
-                </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Incremento en Ventas
-                </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  ROI
-                </th>
-              </tr>
-            </thead>
-            <tbody className='bg-white divide-y divide-gray-200'>
-              {customerData.promotionEffectiveness.map((promo, index) => (
-                <tr
-                  key={index}
-                  className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                >
-                  <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900'>
-                    {promo.name}
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                    {promo.redemptionRate}%
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                    +{promo.salesIncrease}%
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                    {promo.roi}:1
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Recomendaciones de marketing */}
+      <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Recomendaciones de Marketing</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="text-md font-medium text-blue-800">Para Clientes Nuevos</h4>
+            <ul className="text-sm text-blue-600 mt-2 list-disc list-inside">
+              <li>Ofrecer cupón de bienvenida de 10% de descuento</li>
+              <li>Programa de referidos con beneficios para ambos</li>
+              <li>Email de seguimiento después de la primera compra</li>
+            </ul>
+          </div>
+          
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h4 className="text-md font-medium text-green-800">Para Clientes Recurrentes</h4>
+            <ul className="text-sm text-green-600 mt-2 list-disc list-inside">
+              <li>Programa de fidelización con puntos extras</li>
+              <li>Ofertas exclusivas por cumpleaños</li>
+              <li>Acceso prioritario a nuevos productos</li>
+            </ul>
+          </div>
+          
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <h4 className="text-md font-medium text-yellow-800">Para Clientes de Alto Valor</h4>
+            <ul className="text-sm text-yellow-600 mt-2 list-disc list-inside">
+              <li>Descuentos personalizados basados en historial</li>
+              <li>Invitaciones a eventos exclusivos</li>
+              <li>Asesor personal de compras</li>
+            </ul>
+          </div>
+          
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <h4 className="text-md font-medium text-purple-800">Basado en Comportamiento</h4>
+            <ul className="text-sm text-purple-600 mt-2 list-disc list-inside">
+              <li>Promocionar productos complementarios</li>
+              <li>Recordatorios de reposición de productos frecuentes</li>
+              <li>Ofertas de bundle para productos comprados juntos</li>
+            </ul>
+          </div>
         </div>
       </div>
-
-      {/* Net Promoter Score */}
-      {/* <div className='bg-white p-6 rounded-lg shadow-md'>
-        <h2 className='text-xl font-semibold mb-4'>Net Promoter Score (NPS)</h2>
-
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mb-6'>
-          <div className='bg-white p-4 rounded-lg border border-gray-200 flex flex-col items-center justify-center'>
-            <div
-              className={`text-5xl font-bold mb-2 ${getNpsColor(
-                customerData.netPromoterScore.score
-              )} p-4 rounded-full`}
-            >
-              {customerData.netPromoterScore.score}
-            </div>
-            <p className='text-lg font-medium'>Puntuación NPS</p>
-            <p
-              className={`text-sm ${getNpsColor(
-                customerData.netPromoterScore.score
-              )} px-2 py-1 rounded-full mt-2`}
-            >
-              {getNpsClassification(customerData.netPromoterScore.score)}
-            </p>
-          </div>
-
-          <div className='bg-white p-4 rounded-lg border border-gray-200'>
-            <div className='mb-4'>
-              <div className='flex justify-between mb-1'>
-                <span className='text-sm font-medium text-green-600'>
-                  Promotores
-                </span>
-                <span className='text-sm font-medium text-green-600'>
-                  {customerData.netPromoterScore.promoters}%
-                </span>
-              </div>
-              <div className='w-full bg-gray-200 rounded-full h-2.5'>
-                <div
-                  className='bg-green-500 h-2.5 rounded-full'
-                  style={{
-                    width: `${customerData.netPromoterScore.promoters}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            <div className='mb-4'>
-              <div className='flex justify-between mb-1'>
-                <span className='text-sm font-medium text-yellow-600'>
-                  Neutros
-                </span>
-                <span className='text-sm font-medium text-yellow-600'>
-                  {customerData.netPromoterScore.passives}%
-                </span>
-              </div>
-              <div className='w-full bg-gray-200 rounded-full h-2.5'>
-                <div
-                  className='bg-yellow-500 h-2.5 rounded-full'
-                  style={{
-                    width: `${customerData.netPromoterScore.passives}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className='flex justify-between mb-1'>
-                <span className='text-sm font-medium text-red-600'>
-                  Detractores
-                </span>
-                <span className='text-sm font-medium text-red-600'>
-                  {customerData.netPromoterScore.detractors}%
-                </span>
-              </div>
-              <div className='w-full bg-gray-200 rounded-full h-2.5'>
-                <div
-                  className='bg-red-500 h-2.5 rounded-full'
-                  style={{
-                    width: `${customerData.netPromoterScore.detractors}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div> 
-
-       <div className='bg-white p-4 rounded-lg border border-gray-200'>
-          <Line options={npsOptions} data={npsData} />
-        </div>
-      </div> */}
     </div>
-  )
-}
+  );
+};
