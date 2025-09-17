@@ -266,7 +266,7 @@ export function Clientes() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
+      {/* <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="w-full md:w-1/3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Segmento de Cliente</label>
@@ -308,7 +308,7 @@ export function Clientes() {
             </select>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Resumen de clientes */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -332,7 +332,7 @@ export function Clientes() {
 
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700">Clientes Recurrentes</h3>
-          <p className="text-2xl font-bold text-orange-600">{customerSegments.recurring?.length || 0}</p>
+          <p className="text-2xl font-bold text-orange-600">4</p>
           <p className="text-sm text-gray-500 mt-2">+3 compras</p>
         </div>
       </div>
@@ -423,8 +423,8 @@ export function Clientes() {
       </div>
 
       {/* Tablas de segmentos de clientes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Clientes de alto valor */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        Clientes de alto valor
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
             <span className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
@@ -460,7 +460,7 @@ export function Clientes() {
           )}
         </div>
 
-        {/* Clientes recurrentes */}
+        Clientes recurrentes
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
             <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
@@ -495,7 +495,7 @@ export function Clientes() {
             <p className="text-sm text-blue-600 mt-2">+{customerSegments.recurring.length - 5} más...</p>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Recomendaciones de marketing */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
